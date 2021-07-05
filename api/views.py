@@ -1,3 +1,4 @@
+from django.shortcuts import redirect
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,10 +6,18 @@ from .models import Movie
 from .serializers import MovieSerializer
 
 
+def overview(request):
+    return redirect("/api/endpoints")
+
+
 @api_view(["GET"])
 def api_overview(request):
     response = {
-        "Get Movies": "/api/movie-list"
+        "api/movies": "Get Movies",
+        "api/movie/<str:pk>":  "Get Information About Specific Movie",
+        "api/movie-update": "Update Specific Movie",
+        "api/movie-create": "Create New Movie",
+        "api/movie-delete": "Delete Movie",
     }
 
     return Response(response)
