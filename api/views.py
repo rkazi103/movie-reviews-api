@@ -13,11 +13,7 @@ def overview(request):
 @api_view(["GET"])
 def api_overview(request):
     response = {
-        "api/movies": "Get Movies",
-        "api/movie/<str:pk>":  "Get Information About Specific Movie",
-        "api/movie-update": "Update Specific Movie",
-        "api/movie-create": "Create New Movie",
-        "api/movie-delete": "Delete Movie",
+        "Go to the following link to see the API Reference": "https://github.com/rkazi103/movie-reviews-api/blob/main/API_REFERENCE.md"
     }
 
     return Response(response)
@@ -41,7 +37,7 @@ def movie_detail(request, pk):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(["POST"])
+@api_view(["PUT"])
 def movie_create(request):
     serializer = MovieSerializer(data=request.data)
 
