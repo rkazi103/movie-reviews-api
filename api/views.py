@@ -1,145 +1,102 @@
+"""DISCLAMIMER: Movie API Views are most abstract because they are the most generalized and easiest to write"""
+
 from django.shortcuts import redirect
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Movie, MovieReview
 from .serializers import MovieSerializer, MovieReviewSerializer
+from rest_framework import generics
+from rest_framework.views import APIView
+from django.http import Http404
 
 
 def overview(request):
-    return redirect("/api/endpoints")
+    return redirect("/api/")
 
 
-@api_view(["GET"])
-def api_overview(request):
-    response = {
-        "Go to the following link to see the API Reference": "https://github.com/rkazi103/movie-reviews-api/blob/main/API_REFERENCE.md"
-    }
+class APIOverview(APIView):
+    """Give an Overview of the API"""
 
-    return Response(response)
+    def get(self, request, format=None) -> Response:
+        response = {
+            "Go to the following link to see the API Reference": "https://github.com/rkazi103/movie-reviews-api/blob/main/API_REFERENCE.md"
+        }
 
-
-@api_view(["GET"])
-def movie_list(request):
-    movies = Movie.objects.all()
-    serializer = MovieSerializer(movies, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(response)
 
 
-@api_view(["GET"])
-def movie_detail(request, pk):
-    try:
-        movie = Movie.objects.get(id=pk)
-    except Movie.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class MovieListView(generics.ListCreateAPIView):
+    """Get all movies or create new one"""
 
-    serializer = MovieSerializer(movie, many=False)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    queryset = Movie.objects.all()
+    serializer_class = MovieSerializer
 
 
-@api_view(["PUT"])
-def movie_create(request):
-    serializer = MovieSerializer(data=request.data)
+class MovieDetailsView(generics.RetrieveUpdateDestroyAPIView):
+    """Get, update, or delete a specific movie"""
 
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    queryset = Movie.objects.all()
+    serializer_class = MovieSerializer
 
 
-@api_view(["POST"])
-def movie_update(request, pk):
-    try:
-        movie = Movie.objects.get(id=pk)
-    except Movie.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class MovieReviewListView(APIView):
+    """Get movie reviews or create a new movie review for a specific movie"""
 
-    serializer = MovieSerializer(instance=movie, data=request.data)
+    def get(self, request, pk, format=None) -> Response:
+        try:
+            movie = Movie.objects.get(id=pk)
+            movie_reviews = MovieReview.objects.filter(movie=movie.id)
+        except Movie.DoesNotExist or MovieReview.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        serializer = MovieReviewSerializer(movie_reviews, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, pk=None, format=None) -> Response:
+        serializer = MovieReviewSerializer(data=request.data)
 
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-@api_view(["DELETE"])
-def movie_delete(request, pk):
-    try:
-        movie = Movie.objects.get(id=pk)
-    except Movie.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    movie.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["GET"])
-def movie_reviews_list(request, pk):
-    try:
-        movie = Movie.objects.get(id=pk)
-        movie_reviews = MovieReview.objects.filter(movie=movie.id)
-    except Movie.DoesNotExist or MovieReview.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class MovieReviewDetailsView(APIView):
+    """Get, update, or delete a specific movie review for a specific movie"""
 
-    serializer = MovieReviewSerializer(movie_reviews, many=True)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    def get_object(self, movie_pk, movie_review_pk):
+        if movie_pk == None or movie_review_pk == None:
+            raise ValueError
 
+        try:
+            movie = Movie.objects.get(pk=movie_pk)
+            movie_reviews = MovieReview.objects.filter(movie=movie.id)
+            movie_review = movie_reviews.get(id=movie_review_pk)
+            return movie_review
+        except Movie.DoesNotExist or MovieReview.DoesNotExist:
+            raise Http404
 
-@api_view(["GET"])
-def movie_reviews_detail(request, movie_pk, movie_review_pk):
-    try:
-        movie = Movie.objects.get(id=movie_pk)
-        movie_reviews = MovieReview.objects.filter(movie=movie.id)
-        movie_review = movie_reviews.get(id=movie_review_pk)
-    except Movie.DoesNotExist or MovieReview.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    def get(self, request, movie_pk, movie_review_pk) -> Response:
+        movie_review = self.get_object(movie_pk, movie_review_pk)
+        print(movie_review)
+        serializer = MovieReviewSerializer(movie_review)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    print(movie, movie_review)
+    def put(self, request, movie_pk, movie_review_pk) -> Response:
+        movie_review = self.get_object(movie_pk, movie_review_pk)
+        serializer = MovieReviewSerializer(
+            instance=movie_review, data=request.data)
 
-    serializer = MovieReviewSerializer(movie_review)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(["PUT"])
-def movie_reviews_create(request):
-    serializer = MovieReviewSerializer(data=request.data)
+    def delete(self, request, movie_pk, movie_review_pk):
+        movie_review = self.get_object(movie_pk, movie_review_pk)
+        movie_review.delete()
 
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["POST"])
-def movie_reviews_update(request, movie_pk, movie_review_pk):
-    try:
-        movie = Movie.objects.get(id=movie_pk)
-        movie_reviews = MovieReview.objects.filter(movie=movie.id)
-        movie_review = movie_reviews.get(id=movie_review_pk)
-    except Movie.DoesNotExist or MovieReview.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    serializer = MovieReviewSerializer(
-        instance=movie_review, data=request.data)
-
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["DELETE"])
-def movie_reviews_delete(request, movie_pk, movie_review_pk):
-    try:
-        movie = Movie.objects.get(pk=movie_pk)
-        movie_reviews = MovieReview.objects.filter(movie=movie.id)
-        movie_review = movie_reviews.get(id=movie_review_pk)
-    except Movie.DoesNotExist or MovieReview.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    movie_review.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)

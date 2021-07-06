@@ -1,21 +1,17 @@
 from django.urls import path
 from . import views
+from .views import MovieListView, MovieDetailsView, APIOverview, MovieReviewListView, MovieReviewDetailsView
+from rest_framework.urlpatterns import format_suffix_patterns
+
 
 urlpatterns = [
-    path("endpoints/", views.api_overview, name="api-overview"),
-    path("movies/", views.movie_list, name="movie-list"),
-    path("movie/<str:pk>", views.movie_detail, name="movie-detail"),
-    path("movie-create/", views.movie_create, name="movie-create"),
-    path("movie-update/<str:pk>", views.movie_update, name="movie-update"),
-    path("movie-delete/<str:pk>", views.movie_delete, name="movie-delete"),
+    path("", APIOverview.as_view(), name="api-overview"),
+    path("movies/", MovieListView.as_view(), name="movie-list"),
+    path("movie/<str:pk>/", MovieDetailsView.as_view(), name="movie-crud"),
     path("movie/<str:pk>/movie-reviews/",
-         views.movie_reviews_list, name="movie-reviews-list"),
-    path("movie/<str:movie_pk>/movie-review/<str:movie_review_pk>",
-         views.movie_reviews_detail, name="movie-reviews-detail"),
-    path("movie/movie-review-create/",
-         views.movie_reviews_create, name="movie-reviews-create"),
-    path("movie/<str:movie_pk>/movie-review-update/<str:movie_review_pk>",
-         views.movie_reviews_update, name="movie-review-update"),
-    path("movie/<str:movie_pk>/movie-review-delete/<str:movie_review_pk>",
-         views.movie_reviews_delete, name="movie-review-delete")
+         MovieReviewListView.as_view(), name="movie-review-list"),
+    path("movie/<str:movie_pk>/movie-review/<str:movie_review_pk>/",
+         MovieReviewDetailsView.as_view(), name="movie-reviews-detail"),
 ]
+
+urlpatterns = format_suffix_patterns(urlpatterns)
